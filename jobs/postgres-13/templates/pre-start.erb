@@ -2,8 +2,8 @@
 
 set -eu
 
-PACKAGE_DIR=/var/vcap/packages/postgres-10
-PACKAGE_DIR_OLD=/var/vcap/packages/postgres-9.4
+PACKAGE_DIR=/var/vcap/packages/postgres-13
+PACKAGE_DIR_OLD=/var/vcap/packages/postgres-10
 
 STORE_DIR=/var/vcap/store
 
@@ -14,8 +14,8 @@ USER='<%= p("postgres.user") %>'
 
 sysctl -w "kernel.shmmax=67108864"
 
-if [[ -d /var/vcap/store/postgres-13 ]]; then
-  echo "Intentionally failing because data from a newer postgres job may already exist in /var/vcap/store/postgres-13"
+if [[ -d /var/vcap/store/postgres-9 ]]; then
+  echo "Please use a previous bosh release version (264.x or lower) to migrate data from postgres-9.4 to postgres-10."
   exit 1
 fi
 
@@ -33,7 +33,7 @@ if [ ! -d $DATA_DIR ] || [ ! -f $DATA_DIR/postgresql.conf ]; then
   # initdb creates data directories
   su - vcap -c "$PACKAGE_DIR/bin/initdb -E utf8 -D $DATA_DIR"
 
-  touch /var/vcap/store/postgres-10/fresh
+  touch /var/vcap/store/postgres-13/fresh
 
   if [ $? != 0 ]; then
     echo "ERROR: Unable to Initialize Postgres DB"
@@ -46,23 +46,23 @@ if [ ! -d $DATA_DIR ] || [ ! -f $DATA_DIR/postgresql.conf ]; then
   chown vcap:vcap $DATA_DIR/pg_log
 fi
 
-if [[ -f /var/vcap/store/postgres-10/fresh ]] ; then
-  if [[ -d /var/vcap/store/postgres-9.4 ]] ; then
-    echo "checking status of postgres-9.4..."
+if [[ -f /var/vcap/store/postgres-13/fresh ]] ; then
+  if [[ -d /var/vcap/store/postgres-10 ]] ; then
+    echo "checking status of postgres-10..."
     if ! ${PACKAGE_DIR_OLD}/bin/pg_controldata "${DATA_DIR_OLD}" | grep -E "Database cluster state:\s+shut down"; then
-      echo "postgres-9.4 did not shut down cleanly"
-      echo "repairing postgres-9.4. cluster state..."
+      echo "postgres-10 did not shut down cleanly"
+      echo "repairing postgres-10. cluster state..."
 
       su - vcap -c "$PACKAGE_DIR_OLD/bin/postgres -D $DATA_DIR_OLD" &
       postgres_pid=$!
 
       count=0
       while ! ${PACKAGE_DIR_OLD}/bin/pg_isready -t 30 -U postgres; do
-        echo "waiting for postgres-9.4 to start..."
+        echo "waiting for postgres-10 to start..."
         sleep 1
         count=$(( count + 1 ))
         if [ $count -ge 120 ]; then
-          echo "timed out waiting for postgres-9.4 to start"
+          echo "timed out waiting for postgres-10 to start"
           exit 1
         fi
       done
@@ -71,17 +71,17 @@ if [[ -f /var/vcap/store/postgres-10/fresh ]] ; then
       wait "${postgres_pid}"
     fi
 
-    echo "copying contents of postgres-9.4 to postgres-10 for postgres upgrade..."
-    su - vcap -c "/var/vcap/packages/postgres-10/bin/pg_upgrade \
+    echo "copying contents of postgres-10 to postgres-13 for postgres upgrade..."
+    su - vcap -c "/var/vcap/packages/postgres-13/bin/pg_upgrade \
       --old-bindir=$PACKAGE_DIR_OLD/bin \
       --new-bindir=$PACKAGE_DIR/bin \
       --old-datadir=$DATA_DIR_OLD \
       --new-datadir=$DATA_DIR"
 
-    echo "successfully upgraded from postgres-9.4"
+    echo "successfully upgraded from postgres-10"
   fi
 
-  rm /var/vcap/store/postgres-10/fresh
+  rm /var/vcap/store/postgres-13/fresh
 fi
 
 # "bpm enforces its own locking around process operations to avoid race conditions"
@@ -89,6 +89,6 @@ fi
 # so postmaster.pid is stale of it still exists
 # remove it to prevent running into:
 # FATAL:  lock file "postmaster.pid" already exists
-if [[ -f /var/vcap/store/postgres-10/postmaster.pid ]] ; then
-    rm /var/vcap/store/postgres-10/postmaster.pid
+if [[ -f /var/vcap/store/postgres-13/postmaster.pid ]] ; then
+    rm /var/vcap/store/postgres-13/postmaster.pid
 fi
