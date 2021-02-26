@@ -1,0 +1,5 @@
+check process postgres
+  with pidfile /var/vcap/sys/run/bpm/postgres-11/postgres-11.pid
+  start program "/var/vcap/jobs/bpm/bin/bpm start postgres-11" with timeout 300 seconds
+  stop program "/var/vcap/jobs/bpm/bin/bpm stop postgres-11"
+  group vcap

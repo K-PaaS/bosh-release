@@ -2,12 +2,12 @@
 
 set -eu
 
-PACKAGE_DIR=/var/vcap/packages/postgres-10
+PACKAGE_DIR=/var/vcap/packages/postgres-11
 PACKAGE_DIR_OLD=/var/vcap/packages/postgres-9.4
 
 STORE_DIR=/var/vcap/store
 
-DATA_DIR=$STORE_DIR/postgres-10
+DATA_DIR=$STORE_DIR/postgres-11
 DATA_DIR_OLD=$STORE_DIR/postgres-9.4
 
 USER='<%= p("postgres.user") %>'
@@ -28,7 +28,7 @@ if [ ! -d $DATA_DIR ] || [ ! -f $DATA_DIR/postgresql.conf ]; then
   # initdb creates data directories
   su - vcap -c "$PACKAGE_DIR/bin/initdb -E utf8 -D $DATA_DIR"
 
-  touch /var/vcap/store/postgres-10/fresh
+  touch /var/vcap/store/postgres-11/fresh
 
   if [ $? != 0 ]; then
     echo "ERROR: Unable to Initialize Postgres DB"
@@ -41,7 +41,7 @@ if [ ! -d $DATA_DIR ] || [ ! -f $DATA_DIR/postgresql.conf ]; then
   chown vcap:vcap $DATA_DIR/pg_log
 fi
 
-if [[ -f /var/vcap/store/postgres-10/fresh ]] ; then
+if [[ -f /var/vcap/store/postgres-11/fresh ]] ; then
   if [[ -d /var/vcap/store/postgres-9.4 ]] ; then
     echo "checking status of postgres-9.4..."
     if ! ${PACKAGE_DIR_OLD}/bin/pg_controldata "${DATA_DIR_OLD}" | grep -E "Database cluster state:\s+shut down"; then
@@ -66,8 +66,8 @@ if [[ -f /var/vcap/store/postgres-10/fresh ]] ; then
       wait "${postgres_pid}"
     fi
 
-    echo "copying contents of postgres-9.4 to postgres-10 for postgres upgrade..."
-    su - vcap -c "/var/vcap/packages/postgres-10/bin/pg_upgrade \
+    echo "copying contents of postgres-9.4 to postgres-11 for postgres upgrade..."
+    su - vcap -c "/var/vcap/packages/postgres-11/bin/pg_upgrade \
       --old-bindir=$PACKAGE_DIR_OLD/bin \
       --new-bindir=$PACKAGE_DIR/bin \
       --old-datadir=$DATA_DIR_OLD \
@@ -76,7 +76,7 @@ if [[ -f /var/vcap/store/postgres-10/fresh ]] ; then
     echo "successfully upgraded from postgres-9.4"
   fi
 
-  rm /var/vcap/store/postgres-10/fresh
+  rm /var/vcap/store/postgres-11/fresh
 fi
 
 # "bpm enforces its own locking around process operations to avoid race conditions"
@@ -84,6 +84,6 @@ fi
 # so postmaster.pid is stale of it still exists
 # remove it to prevent running into:
 # FATAL:  lock file "postmaster.pid" already exists
-if [[ -f /var/vcap/store/postgres-10/postmaster.pid ]] ; then
-    rm /var/vcap/store/postgres-10/postmaster.pid
+if [[ -f /var/vcap/store/postgres-11/postmaster.pid ]] ; then
+    rm /var/vcap/store/postgres-11/postmaster.pid
 fi

@@ -1,4 +1,4 @@
-data_directory = '/var/vcap/store/postgres-10'
+data_directory = '/var/vcap/store/postgres-11'
 
 listen_addresses = '<%= p('postgres.listen_address') %>'
 port = <%= p('postgres.port') %>
@@ -16,5 +16,12 @@ lc_messages = 'en_US.UTF-8'
 lc_monetary = 'en_US.UTF-8'
 lc_numeric = 'en_US.UTF-8'
 lc_time = 'en_US.UTF-8'
-
 default_text_search_config = 'pg_catalog.english'
+
+
+# CCE
+<% if p('postgres.cce_enable') %>
+password_encryption= 'scram-sha-256'
+log_statement=all
+log_min_duration_statement = 100
+<% end %>

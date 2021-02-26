@@ -1,14 +1,14 @@
 <%=
 
 postgres_config = {
-  "name" => "postgres-10",
-  "executable" => "/var/vcap/jobs/postgres-10/bin/postgres",
+  "name" => "postgres-11",
+  "executable" => "/var/vcap/jobs/postgres-11/bin/postgres",
   "persistent_disk" => true,
   "limits" => {
     "open_files" => 65536,
   },
   "hooks" => {
-    "pre_start" => "/var/vcap/jobs/postgres-10/bin/pre-start",
+    "pre_start" => "/var/vcap/jobs/postgres-11/bin/pre-start",
   }
 }
 
