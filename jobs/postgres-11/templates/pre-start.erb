@@ -3,19 +3,19 @@
 set -eu
 
 PACKAGE_DIR=/var/vcap/packages/postgres-11
-PACKAGE_DIR_OLD=/var/vcap/packages/postgres-9.4
+PACKAGE_DIR_OLD=/var/vcap/packages/postgres-10
 
 STORE_DIR=/var/vcap/store
 
 DATA_DIR=$STORE_DIR/postgres-11
-DATA_DIR_OLD=$STORE_DIR/postgres-9.4
+DATA_DIR_OLD=$STORE_DIR/postgres-10
 
 USER='<%= p("postgres.user") %>'
 
 sysctl -w "kernel.shmmax=67108864"
 
-if [[ -d /var/vcap/store/postgres ]]; then
-  echo "Please use a previous bosh release version (264.x or lower) to migrate data from postgres to postgres-9.4."
+if [[ -d /var/vcap/store/postgres-9 ]]; then
+  echo "Please use a previous bosh release version (271.x or lower) to migrate data from postgres-9 to postgres-10."
   exit 1
 fi
 
@@ -42,38 +42,16 @@ if [ ! -d $DATA_DIR ] || [ ! -f $DATA_DIR/postgresql.conf ]; then
 fi
 
 if [[ -f /var/vcap/store/postgres-11/fresh ]] ; then
-  if [[ -d /var/vcap/store/postgres-9.4 ]] ; then
-    echo "checking status of postgres-9.4..."
-    if ! ${PACKAGE_DIR_OLD}/bin/pg_controldata "${DATA_DIR_OLD}" | grep -E "Database cluster state:\s+shut down"; then
-      echo "postgres-9.4 did not shut down cleanly"
-      echo "repairing postgres-9.4. cluster state..."
-
-      su - vcap -c "$PACKAGE_DIR_OLD/bin/postgres -D $DATA_DIR_OLD" &
-      postgres_pid=$!
-
-      count=0
-      while ! ${PACKAGE_DIR_OLD}/bin/pg_isready -t 30 -U postgres; do
-        echo "waiting for postgres-9.4 to start..."
-        sleep 1
-        count=$(( count + 1 ))
-        if [ $count -ge 120 ]; then
-          echo "timed out waiting for postgres-9.4 to start"
-          exit 1
-        fi
-      done
-
-      kill "${postgres_pid}"
-      wait "${postgres_pid}"
-    fi
-
-    echo "copying contents of postgres-9.4 to postgres-11 for postgres upgrade..."
-    su - vcap -c "/var/vcap/packages/postgres-11/bin/pg_upgrade \
+  if [[ -d /var/vcap/store/postgres-10 ]] ; then
+    echo "copying contents of postgres-10 to postgres-11 for postgres upgrade..."
+    su - vcap -c "$PACKAGE_DIR/bin/pg_upgrade \
       --old-bindir=$PACKAGE_DIR_OLD/bin \
       --new-bindir=$PACKAGE_DIR/bin \
       --old-datadir=$DATA_DIR_OLD \
       --new-datadir=$DATA_DIR"
 
-    echo "successfully upgraded from postgres-9.4"
+    echo "successfully upgraded from postgres-10"
+    rm -rf '/var/vcap/store/postgres-10'
   fi
 
   rm /var/vcap/store/postgres-11/fresh
@@ -81,7 +59,7 @@ fi
 
 # "bpm enforces its own locking around process operations to avoid race conditions"
 # from docs: https://bosh.io/docs/bpm/runtime/
-# so postmaster.pid is stale of it still exists
+# so postmaster.pid is stale if it still exists
 # remove it to prevent running into:
 # FATAL:  lock file "postmaster.pid" already exists
 if [[ -f /var/vcap/store/postgres-11/postmaster.pid ]] ; then

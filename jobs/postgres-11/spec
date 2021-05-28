@@ -10,7 +10,7 @@ templates:
 
 packages:
   - postgres-11
-  - postgres-9.4
+  - postgres-10
 
 properties:
   postgres.user:
