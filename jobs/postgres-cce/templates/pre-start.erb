@@ -45,6 +45,19 @@ fi
 
 if [[ -f /var/vcap/store/postgres-13/fresh ]] ; then
   if [[ -d /var/vcap/store/postgres-11 ]] ; then
+    
+    DB_CLUSTER_STATE=$($PACKAGE_DIR_OLD_11/bin/pg_controldata  $DATA_DIR_OLD_11 | grep "cluster state" | awk -F":" '{print $2}' | sed 's/^ *//')
+    echo "$DATA_DIR_OLD_11 cluster state : $DB_CLUSTER_STATE"
+            
+    if [[ "$DB_CLUSTER_STATE" != "shut down" ]]; then
+        echo "$DATA_DIR_OLD_11 cluster starting..."
+        su - vcap -c "$PACKAGE_DIR_OLD_11/bin/pg_ctl start -D $DATA_DIR_OLD_11"
+        echo "$DATA_DIR_OLD_11 cluster started..."
+
+        su - vcap -c "$PACKAGE_DIR_OLD_11/bin/pg_ctl stop -D $DATA_DIR_OLD_11"
+        echo "$DATA_DIR_OLD_11 cluster stopped..."
+    fi
+
     echo "copying contents of postgres-11 to postgres-13 for postgres upgrade..."
     su - vcap -c "$PACKAGE_DIR/bin/pg_upgrade \
       --old-bindir=$PACKAGE_DIR_OLD_11/bin \
