@@ -18,10 +18,10 @@ nginx/headers-more-nginx-module-0.30.tar.gz:
   size: 27793
   object_id: ee5b4828-67f9-42f7-a0fb-23b4d4c9805f
   sha: a188a399f3e365a0831585a9d7aa0e6ed1a75f0d
-nginx/nginx-1.19.8.tar.gz:
-  size: 1060155
-  object_id: 7776ad34-3608-44ef-69be-bea8551695d9
-  sha: sha256:308919b1a1359315a8066578472f998f14cb32af8de605a3743acca834348b05
+#nginx/nginx-1.19.8.tar.gz:
+#  size: 1060155
+#  object_id: 7776ad34-3608-44ef-69be-bea8551695d9
+#  sha: sha256:308919b1a1359315a8066578472f998f14cb32af8de605a3743acca834348b05
 nginx/nginx-upload-module-2.3.0.tar.gz:
   size: 40139
   object_id: 598d93c6-90b8-4472-5308-5235bb476a45
@@ -42,10 +42,10 @@ postgres/postgresql-10.12.tar.gz:
   size: 24940708
   object_id: f9146302-0391-459c-6f19-5d3958a3a43d
   sha: sha256:a1a32c2b91bc5e3cb46b56f44d6b6baf82cd27eff973d6c1785f4ab93e34d23b
-postgres/postgresql-13.2.tar.gz:
-  size: 27548921
-  object_id: dcbe8474-8120-49b9-7fce-ca483daabaf8
-  sha: sha256:3386a40736332aceb055c7c9012ecc665188536d874d967fcc5a33e7992f8080
+#postgres/postgresql-13.2.tar.gz:
+#  size: 27548921
+#  object_id: dcbe8474-8120-49b9-7fce-ca483daabaf8
+#  sha: sha256:3386a40736332aceb055c7c9012ecc665188536d874d967fcc5a33e7992f8080
 powerdns/pdns-static_3.3.1-1_amd64.deb:
   size: 9353694
   object_id: 6e861aa6-2e83-4027-a1e8-0ebec995c274
