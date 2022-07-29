@@ -1,0 +1,108 @@
+#!/bin/bash
+
+set -eu
+
+PACKAGE_DIR=/var/vcap/packages/postgres-13
+PACKAGE_DIR_OLD_11=/var/vcap/packages/postgres-11
+PACKAGE_DIR_OLD_10=/var/vcap/packages/postgres-10
+
+STORE_DIR=/var/vcap/store
+
+DATA_DIR=$STORE_DIR/postgres-13
+DATA_DIR_OLD_11=$STORE_DIR/postgres-11
+DATA_DIR_OLD_10=$STORE_DIR/postgres-10
+DATA_DIR_OBSOLETE=$STORE_DIR/postgres-9.4
+
+USER='<%= p("postgres.user") %>'
+
+sysctl -w "kernel.shmmax=67108864"
+
+# if [[ -d /var/vcap/store/postgres-9 ]]; then
+#   echo "Please use a previous bosh release version (271.x or lower) to migrate data from postgres-9 to postgres-10 or postgres-11."
+#   exit 1
+# fi
+
+if [ -d $DATA_DIR_OBSOLETE ]; then
+  # uh-oh, we have years-old BOSH Director
+  if [ ! -d $DATA_DIR_OLD_10 ] || [ ! -d $DATA_DIR_OLD_11 ] && [ ! -d $DATA_DIR ]; then
+    # we never upgraded this BOSH Director from PostgreSQL 9.4 to 10 or 11
+    echo "Please use a previous bosh release version (271.x or lower) to migrate data from postgres-9.4 to postgres-10 or postgres-11."
+    exit 1
+  fi
+  # delete the obsolete 9.4 directory to free up space
+  echo "Deleting obsolete $DATA_DIR_OBSOLETE directory."
+  rm -rf "${DATA_DIR_OBSOLETE}"
+fi
+
+# We cannot kill the following conditional
+# because initdb is very picky about looking at an empty dir
+if [ ! -d $DATA_DIR ] || [ ! -f $DATA_DIR/postgresql.conf ]; then
+  mkdir -p $DATA_DIR
+  chown vcap:vcap $DATA_DIR
+
+  # initdb creates data directories
+  su - vcap -c "$PACKAGE_DIR/bin/initdb -E utf8 -D $DATA_DIR"
+
+  touch /var/vcap/store/postgres-13/fresh
+
+  if [ $? != 0 ]; then
+    echo "ERROR: Unable to Initialize Postgres DB"
+    exit 1
+  fi
+
+  echo "host all $USER 0.0.0.0/0 md5" >> $DATA_DIR/pg_hba.conf
+
+  mkdir -p $DATA_DIR/pg_log
+  chown vcap:vcap $DATA_DIR/pg_log
+fi
+
+if [[ -f /var/vcap/store/postgres-13/fresh ]] ; then
+  if [[ -d /var/vcap/store/postgres-11 ]] ; then
+
+    DB_CLUSTER_STATE=$($PACKAGE_DIR_OLD_11/bin/pg_controldata  $DATA_DIR_OLD_11 | grep "cluster state" | awk -F":" '{print $2}' | sed 's/^ *//')
+    echo "$DATA_DIR_OLD_11 cluster state : $DB_CLUSTER_STATE"
+
+    if [[ "$DB_CLUSTER_STATE" != "shut down" ]]; then
+        echo "$DATA_DIR_OLD_11 cluster starting..."
+        su - vcap -c "$PACKAGE_DIR_OLD_11/bin/pg_ctl start -D $DATA_DIR_OLD_11"
+        echo "$DATA_DIR_OLD_11 cluster started..."
+
+        su - vcap -c "$PACKAGE_DIR_OLD_11/bin/pg_ctl stop -D $DATA_DIR_OLD_11"
+        echo "$DATA_DIR_OLD_11 cluster stopped..."
+    fi
+
+    echo "copying contents of postgres-11 to postgres-13 for postgres upgrade..."
+    su - vcap -c "$PACKAGE_DIR/bin/pg_upgrade \
+      --old-bindir=$PACKAGE_DIR_OLD_11/bin \
+      --new-bindir=$PACKAGE_DIR/bin \
+      --old-datadir=$DATA_DIR_OLD_11 \
+      --new-datadir=$DATA_DIR"
+
+    echo "successfully upgraded from postgres-11"
+    rm -rf '/var/vcap/store/postgres-11'
+  fi
+
+  if [[ -d /var/vcap/store/postgres-10 ]] ; then
+    echo "copying contents of postgres-10 to postgres-13 for postgres upgrade..."
+    su - vcap -c "$PACKAGE_DIR/bin/pg_upgrade \
+      --old-bindir=$PACKAGE_DIR_OLD_10/bin \
+      --new-bindir=$PACKAGE_DIR/bin \
+      --old-datadir=$DATA_DIR_OLD_10 \
+      --new-datadir=$DATA_DIR"
+
+    echo "successfully upgraded from postgres-10"
+    rm -rf '/var/vcap/store/postgres-10'
+  fi
+
+  rm /var/vcap/store/postgres-13/fresh
+fi
+
+# "bpm enforces its own locking around process operations to avoid race conditions"
+# from docs: https://bosh.io/docs/bpm/runtime/
+# so postmaster.pid is stale if it still exists
+# remove it to prevent running into:
+# FATAL:  lock file "postmaster.pid" already exists
+if [[ -f /var/vcap/store/postgres-13/postmaster.pid ]] ; then
+    rm /var/vcap/store/postgres-13/postmaster.pid
+fi
+
